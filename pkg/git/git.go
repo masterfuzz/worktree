@@ -133,6 +133,8 @@ func getSSHAuth() (transport.AuthMethod, error) {
 	if authSock := os.Getenv("SSH_AUTH_SOCK"); authSock != "" {
 		conn, err := net.Dial("unix", authSock)
 		if err == nil {
+			defer func() { _ = conn.Close() }()
+
 			agentClient := agent.NewClient(conn)
 			keys, err := agentClient.List()
 			if err == nil && len(keys) > 0 {
@@ -141,14 +143,7 @@ func getSSHAuth() (transport.AuthMethod, error) {
 					return auth, nil
 				}
 			}
-			_ = conn.Close()
 		}
-	}
-
-	// Fallback to go-git's SSH agent implementation
-	auth, err := gitssh.NewSSHAgentAuth("git")
-	if err == nil {
-		return auth, nil
 	}
 
 	// Fallback to default SSH key locations
